@@ -29,9 +29,9 @@ The problem of finding the best variable ordering is **NP-hard**.
 # Design
 
 ## Requirements
-This system requires [pyeda](https://pyeda.readthedocs.io/en/latest/overview.html) library which supports BDD structure in python.
+This system requires [dd](https://github.com/tulip-control/dd) library which supports BDD structure in python.
 ```python
-pip install pyeda
+pip install dd
 ```
 or
 ```python
@@ -39,19 +39,22 @@ pip install -r requirements.txt
 ```
 
 ## Parameters
+**POP_SIZE** size of population. (default 500)
 
-POP_SIZE: size of population. (default 500)
-POOL_SIZE: size of parents pool for crossover and mutation. (default 50)
-nOper: number of binary operations only used for automatic boolean function generation. (default 10)
+**POOL_SIZE** size of parents pool for crossover and mutation. (default 30)
 
+**N_LIMIT** iteration limitation for stopping criteria. (default 10)
+
+**LIMIT_RATIO** limitation ratio for setting criteria. (default 0.85)
+
+**CRITERIA** minimum number of new offsprings which increases N_LIMIT.
+
+## Initial Population and Individual
 ```python
-nOper = 10
-auto_bfunc = FormulaGenerator().genFormula(nOper)
-manual_bfunc = "v[0]&v[1]|v[2]&v[3]|v[4]&v[5]"
+python run.py "v0 & v1 | v2 & v3 | v4 & v5"
 ```
-This system needs a boolean function expression with &(AND), |(OR), ^(XOR), and ~(NOT) operators. [*generator.py*](./generator.py) can generate random boolean function, but you can put it in manually.
+This system needs a boolean function expression with &(AND), |(OR), ^(XOR), and ~(NOT) operators. If you don't put boolean expression argument, [*generator.py*](./generator.py) may generate random boolean expression.
 
-## Parameters such as the size of an initial population
 ```python
 def createIndividual(n):
     ind = [0, 1, 2, ..., n-1]
@@ -62,33 +65,75 @@ def createPopulation(nVar, psize):
     pop = [createIndividual(nVar) for _ in range(psize)]
     return pop
 ```
-
-Consider a boolean function has n boolean variables. Each individual is ordering sequence of variables in boolean function. It is a shuffled list which contains all numbers 0 to n-1.
+Consider a boolean expression has n boolean variables. Each individual is ordering sequence of variables in boolean expression. It is a shuffled list which contains all numbers 0 to n-1.
 
 ## Stopping criteria
+```python
+if len(newPop) < CRITERIA:
+    nIter += 1
+    if nIter == N_LIMIT:
+        break
+pop.extend(newPop)
+```
+If there is not enough progress *CRITERIA*, increase iteration limitation *nIter*. When *nIter* reaches *N_LIMIT*, the process is over.
 
-> fixed time count (60 seconds).
+## Fitness
+```python
+def evaluate(bdd, vars, nVar, ind):
+    ordering = {}
+    for i in range(nVar):
+        ordering[vars[i]] = ind[i]
+    BDD.reorder(bdd, ordering)
+    score = len(sample_bdd)
+    return score
+```
+Consider there is boolean function with n boolean variables. Fitness is number of nodes in BDD. Smaller is better. 
 
-## Fitness function
-> Fitness is number of nodes in ROBDD. Smaller is better.
+![img4](./img/formula2.png)
+![img5](./img/formula3.png)
 
-## Selection operator
-Select top *POOL_SIZE* individuals, do crossover and mutation.
+## Selection
+```python
+def fps(pop):
+    total_fitness = sum(fitness)
+    weight = [f/total_fitness for f in fitness]
+    return weight
+```
+Select individuals from fitness weight.
 
-## Crossover operator
-Currently, this system works in small size, so no crossover..
+## Crossover
+```python
+def crossover(pop):
+    newPop = []
+    weight = selection_algorithm(pop)
+    for 0 to POOL_SIZE:
+        select aParent, bParent
+        generate offsprings
+        if offspring not in pop:
+            newPop.append(offsprings)
+    return newPop
+```
+Create new offspring individuals from selected *POOL_SIZE* individuals.
 
 ## Mutation
 
 ```python
 def mutation(pop):
-    newPop = pop[:POOL_SIZE]
+    newPop = pop
     for ind in newPop:
         select e1, e2
         swap(e1, e2)
     return newPop
 ```
-Create new individuals from selected top *POOL_SIZE* individuals. Each individual has ordering sequence form. Therefore mutation is swap process between two elements in individual.
+Create new individuals from selected *POOL_SIZE* individuals. Each individual has ordering sequence form. Therefore mutation is swap process between two elements in individual.
 
 ## Generational selection strategy
-Select top *POOL_SIZE* individuals.
+```python
+pop.sort(key=get_eval)
+pop = pop[:POP_SIZE]
+...
+newPop = crossover(pop)
+newPop = mutation(newPop)
+pop.extend(newPop)
+```
+Generate all by random, but choose best.
