@@ -26,6 +26,19 @@ The problem of finding the best variable ordering is **NP-hard**.
 * Apply this system to BDD-based model-checking.
 
 
+# Run
+
+run with random generated boolean expression.
+```cmd
+python run.py -len [number]
+```
+
+run with specific boolean expression.
+```cmd
+python run.py -expr [boolean expression]
+```
+
+
 # Design
 
 ## Requirements
@@ -50,9 +63,7 @@ pip install -r requirements.txt
 **CRITERIA** minimum number of new offsprings which increases N_LIMIT.
 
 ## Initial Population and Individual
-```python
-python run.py "v0 & v1 | v2 & v3 | v4 & v5"
-```
+
 This system needs a boolean function expression with &(AND), |(OR), ^(XOR), and ~(NOT) operators. If you don't put boolean expression argument, [*generator.py*](./generator.py) may generate random boolean expression.
 
 ```python
@@ -73,7 +84,6 @@ if len(newPop) < CRITERIA:
     nIter += 1
     if nIter == N_LIMIT:
         break
-pop.extend(newPop)
 ```
 If there is not enough progress *CRITERIA*, increase iteration limitation *nIter*. When *nIter* reaches *N_LIMIT*, the process is over.
 

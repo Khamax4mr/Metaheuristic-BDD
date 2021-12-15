@@ -1,18 +1,13 @@
 from dd.autoref import BDD
 
+import config
+
 from random import shuffle, choices, randint
 from copy import copy
 from functools import partial
 from sys import maxsize
 
-DEBUG = False
 KEY, FIT = 0, 1
-
-POP_SIZE = 500
-POOL_SIZE = 30
-N_LIMIT = 10
-LIMIT_RATIO = 0.85
-CRITERIA = POOL_SIZE * 2 * LIMIT_RATIO
 
 
 # new individual. the sequence of ordering.
@@ -28,12 +23,11 @@ def createPopulation(nVar, psize):
 
 # check the number of nodes.
 def evaluate(bdd, vars, nVar, ind):
-    sample_bdd = copy(bdd)
     ordering = {}
     for i in range(nVar):
         ordering[vars[i]] = ind[i]
-    BDD.reorder(sample_bdd, ordering)
-    score = len(sample_bdd)
+    BDD.reorder(bdd, ordering)
+    score = len(bdd)
     return score
 
 
@@ -45,7 +39,7 @@ def crossover(nVar, popChain):
     # select weight.
     weight = fps_basic(popChain)
 
-    for _ in range(POOL_SIZE):
+    for _ in range(config.POOL_SIZE):
         # select parents.
         parents = choices(popChain, weight, k=2)
         aParent = parents[0][KEY]
@@ -91,6 +85,9 @@ def run(expr, vars):
     bdd.add_expr(expr)
     nVar = len(vars)
 
+    if config.DEBUG == True:
+        print("Target expr:", expr)
+
     # set functions.
     global chain
     chain = lambda x: (x, eval_with(x))
@@ -98,7 +95,7 @@ def run(expr, vars):
     eval_with = partial(evaluate, bdd, vars, nVar)
 
     # metaheuristic initialization.
-    pop = createPopulation(nVar, POP_SIZE)
+    pop = createPopulation(nVar, config.POP_SIZE)
     popChain = [chain(ind) for ind in pop]
     lastScore = bestScore = maxsize
     satisfied = False
@@ -107,7 +104,7 @@ def run(expr, vars):
     while not satisfied:
         # evaluation.
         popChain.sort(key=get_eval)
-        popChain = popChain[:POP_SIZE]
+        popChain = popChain[:config.POP_SIZE]
         bestInd, bestScore = popChain[0]
 
         # print better score.
@@ -115,7 +112,7 @@ def run(expr, vars):
             lastScore = bestScore
             nIter = 0
 
-            if DEBUG == True:
+            if config.DEBUG == True:
                 print("Best Ind  :", bestInd)
                 print("Best Score:", bestScore)
                 print("Limitation:", nIter)
@@ -123,17 +120,17 @@ def run(expr, vars):
 
         newChain = crossover(nVar, popChain)
         newChain = mutation(newChain)
-        if len(newChain) < CRITERIA:
+        if len(newChain) < config.CRITERIA:
             nIter += 1
-            if nIter == N_LIMIT:
+            if nIter == config.N_LIMIT:
                 break
         popChain.extend(newChain)
 
-    if DEBUG == True:
+    if config.DEBUG == True:
         print("Best Ind  :", bestInd)
         print("Best Score:", bestScore)
 
-    ordering = [0 for _ in vars]
+    ordering = [0 for _ in range(nVar)]
     for i in range(nVar):
         ordering[bestInd[i]] = vars[i]
     return ordering
